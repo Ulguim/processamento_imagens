@@ -1,44 +1,71 @@
 from processador import ProcessadorMorfologico, OperacaoMorfologica, TipoRuido
 
-# ── Configuração global ──────────────────────────────────────────────────────
+# ── Caminhos ─────────────────────────────────────────────────────────────────
 DATASET    = "./dataset/STI"
 RESULTADOS = "./resultados"
-KERNELS    = [3, 5, 7]
 
-# ── Experimento A: Fingerprint — todas as operações ─────────────────────────
-p = ProcessadorMorfologico(
-    diretorio_dataset=DATASET,
-    diretorio_saida=RESULTADOS,
-    tamanhos_kernel=KERNELS,
-)
-(
-    p.selecionar_imagens(categorias=["Fingerprint"])
-     .selecionar_operacoes(todas=True)
-)
-p.processar()
-p.visualizar(analise="fingerprint_todas_operacoes", salvar=True)
-p.gerar_relatorio_metricas(analise="fingerprint_todas_operacoes")
+# ── Parâmetros dos experimentos ───────────────────────────────────────────────
+# Edite aqui para ajustar ou criar novos experimentos.
+# Chave     : nome da análise (vira subpasta em resultados/)
+# categorias: lista de categorias do dataset  (use OU categorias OU nomes)
+# nomes     : lista de nomes de imagens
+# operacoes : lista de OperacaoMorfologica  ou  "todas"
+# kernels   : tamanhos dos elementos estruturantes (ímpares, ex: [3, 5, 7])
+# ruido     : TipoRuido.SALT_PEPPER  ou  TipoRuido.GAUSSIANO
+# intensidade: fração de pixels corrompidos (0.0 – 1.0)
+# seed      : garante reprodutibilidade dos resultados
 
-# ── Experimento B: Médicas — abertura e fechamento ───────────────────────────
-p.limpar_selecao()
-(
-    p.selecionar_imagens(categorias=["Medical"])
-     .selecionar_operacoes(operacoes=[
-         OperacaoMorfologica.ABERTURA,
-         OperacaoMorfologica.FECHAMENTO,
-     ])
-)
-p.processar()
-p.visualizar(analise="medical_abertura_fechamento", salvar=True)
-p.gerar_relatorio_metricas(analise="medical_abertura_fechamento")
+EXPERIMENTOS = {
+    "fingerprint_todas_operacoes": dict(
+        categorias  = ["Fingerprint"],
+        operacoes   = "todas",
+        kernels     = [3, 5, 7],
+        ruido       = TipoRuido.SALT_PEPPER,
+        intensidade = 0.05,
+        seed        = 42,
+    ),
+    "medical_abertura_fechamento": dict(
+        categorias  = ["Medical"],
+        operacoes   = [OperacaoMorfologica.ABERTURA, OperacaoMorfologica.FECHAMENTO],
+        kernels     = [3, 5],
+        ruido       = TipoRuido.SALT_PEPPER,
+        intensidade = 0.10,
+        seed        = 42,
+    ),
+    "classica_erosao": dict(
+        nomes       = ["cameraman"],
+        operacoes   = [OperacaoMorfologica.EROSAO],
+        kernels     = [3],
+        ruido       = TipoRuido.SALT_PEPPER,
+        intensidade = 0.05,
+        seed        = 42,
+    ),
+}
 
-# ── Experimento C: Clássica — erosão ────────────────────────────────────────
-p2 = ProcessadorMorfologico(diretorio_dataset=DATASET, tamanhos_kernel=[3])
-(
-    p2.selecionar_imagens(nomes=["cameraman"])
-      .selecionar_operacoes(operacoes=[OperacaoMorfologica.EROSAO])
-)
-p2.processar()
-p2.visualizar(analise="classica_erosao", salvar=True)
+# ── Execução ──────────────────────────────────────────────────────────────────
+for nome, cfg in EXPERIMENTOS.items():
+    p = ProcessadorMorfologico(
+        diretorio_dataset = DATASET,
+        diretorio_saida   = RESULTADOS,
+        tamanhos_kernel   = cfg["kernels"],
+        ruido             = cfg["ruido"],
+        intensidade_ruido = cfg["intensidade"],
+        seed              = cfg["seed"],
+    )
+
+    sel = p.selecionar_imagens(
+        nomes      = cfg.get("nomes"),
+        categorias = cfg.get("categorias"),
+    )
+
+    ops = cfg["operacoes"]
+    if ops == "todas":
+        sel.selecionar_operacoes(todas=True)
+    else:
+        sel.selecionar_operacoes(operacoes=ops)
+
+    p.processar()
+    p.visualizar(analise=nome, salvar=True)
+    p.gerar_relatorio_metricas(analise=nome)
 
 print(f"\nConcluído. Resultados em: {RESULTADOS}/")
