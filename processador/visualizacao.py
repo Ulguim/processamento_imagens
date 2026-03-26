@@ -19,11 +19,99 @@ def visualizar(
     salvar:      bool = True,
 ) -> None:
     """
-    Gera grade de comparação por imagem e salva em pasta_saida.
+    Salva uma figura por operação por imagem em subpastas separadas.
+
+    Estrutura de saída:
+        pasta_saida/
+          erosao/
+            fingerprint1_pgm.png   ← original | binária | ruidosa | kernel_3 | kernel_5 | ...
+          dilatacao/
+            fingerprint1_pgm.png
+          ...
+
     Linha 0: original | binarizada | ruidosa
-    Linhas seguintes: resultado por kernel × operação (com métricas no título).
+    Linha 1: resultado por kernel (com métricas no título)
     """
-    pasta_saida.mkdir(parents=True, exist_ok=True)
+    alvos = (
+        {k: v for k, v in resultados.items() if imagem_nome in k}
+        if imagem_nome else resultados
+    )
+
+    for chave, dados in alvos.items():
+        info    = dados["info"]
+        kernels = [k for k in dados if k.startswith("kernel_")]
+
+        for op in operacoes:
+            pasta_op = pasta_saida / op.value
+            if salvar:
+                pasta_op.mkdir(parents=True, exist_ok=True)
+
+            n_cols = max(3, len(kernels))
+            fig, axes = plt.subplots(2, n_cols, figsize=(4 * n_cols, 8))
+            axes = np.array(axes).reshape(2, n_cols)
+
+            fig.suptitle(
+                f"{info.categoria} — {info.nome}.{info.formato}  [{op.value.upper()}]",
+                fontsize=13, fontweight="bold",
+            )
+
+            # Linha 0: pipeline de entrada
+            for ax in axes[0]:
+                ax.axis("off")
+            _mostrar(axes[0, 0], dados["original"], "Original (Cinza)")
+            _mostrar(axes[0, 1], dados["binaria"],  "Binarizada (Otsu)")
+            _mostrar(axes[0, 2], dados["ruidosa"],  "Com Ruído")
+
+            # Linha 1: resultado por kernel
+            for col, chave_k in enumerate(kernels):
+                ax    = axes[1, col] if col < n_cols else None
+                entry = dados[chave_k].get(op.value) if ax is not None else None
+                if entry is None:
+                    if ax is not None:
+                        ax.axis("off")
+                    continue
+                ksize = chave_k.split("_")[1]
+                m     = entry["metricas"]
+                titulo = (
+                    f"{op.value.capitalize()} {ksize}\n"
+                    f"IoU={m['jaccard']:.3f}  F1={m['f1']:.3f}\n"
+                    f"Acc={m['pixel_accuracy']:.3f}  SSIM={m['ssim']:.3f}"
+                )
+                _mostrar(ax, entry["imagem"], titulo)
+
+            # desliga colunas extras
+            for col in range(len(kernels), n_cols):
+                axes[1, col].axis("off")
+
+            plt.tight_layout()
+
+            if salvar:
+                caminho = pasta_op / f"{chave}.png"
+                fig.savefig(str(caminho), dpi=120, bbox_inches="tight")
+                print(f"  Figura salva: {caminho}")
+            if mostrar:
+                plt.show()
+            plt.close(fig)
+
+
+def visualizar_combinado(
+    resultados:  dict,
+    operacoes:   list[OperacaoMorfologica],
+    pasta_saida: Path,
+    imagem_nome: str  = None,
+    mostrar:     bool = False,
+    salvar:      bool = True,
+) -> None:
+    """
+    Gera um arquivo por imagem com todas as operações e kernels numa grade única.
+    Salva em: pasta_saida/visao_geral/{chave}_comparacao.png
+
+    Linha 0: Original | Binarizada | Ruidosa
+    Linhas 1..N: uma linha por kernel, colunas = operações (com métricas).
+    """
+    pasta_vg = pasta_saida / "visao_geral"
+    if salvar:
+        pasta_vg.mkdir(parents=True, exist_ok=True)
 
     alvos = (
         {k: v for k, v in resultados.items() if imagem_nome in k}
@@ -40,16 +128,18 @@ def visualizar(
         axes = np.array(axes).reshape(n_rows, n_cols)
 
         fig.suptitle(
-            f"{info.categoria} — {info.nome}.{info.formato}",
+            f"{info.categoria} — {info.nome}.{info.formato}  [VISÃO GERAL]",
             fontsize=14, fontweight="bold",
         )
 
+        # Linha 0: pipeline de entrada
         for ax in axes[0]:
             ax.axis("off")
         _mostrar(axes[0, 0], dados["original"], "Original (Cinza)")
         _mostrar(axes[0, 1], dados["binaria"],  "Binarizada (Otsu)")
-        _mostrar(axes[0, 2], dados["ruidosa"],  "Com Ruído (Sal-e-Pimenta)")
+        _mostrar(axes[0, 2], dados["ruidosa"],  "Com Ruído")
 
+        # Linhas 1..N: resultado por kernel × operação
         for row, chave_k in enumerate(kernels, start=1):
             ksize = chave_k.split("_")[1]
             for col, op in enumerate(operacoes):
@@ -74,9 +164,9 @@ def visualizar(
         plt.tight_layout()
 
         if salvar:
-            caminho = pasta_saida / f"{chave}_comparacao.png"
+            caminho = pasta_vg / f"{chave}_comparacao.png"
             fig.savefig(str(caminho), dpi=120, bbox_inches="tight")
-            print(f"  Figura salva: {caminho}")
+            print(f"  Visão geral salva: {caminho}")
         if mostrar:
             plt.show()
         plt.close(fig)

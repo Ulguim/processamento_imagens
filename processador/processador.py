@@ -10,7 +10,8 @@ from .metricas import calcular_metricas
 from .modelos import ImagemInfo, OperacaoMorfologica, TipoRuido
 from .operacoes import aplicar, criar_kernel
 from .ruido import adicionar_ruido
-from .visualizacao import gerar_relatorio, visualizar
+from .ranking import gerar_ranking
+from .visualizacao import gerar_relatorio, visualizar, visualizar_combinado
 
 warnings.filterwarnings("ignore")
 
@@ -162,10 +163,35 @@ class ProcessadorMorfologico:
             salvar=salvar,
         )
 
+    def visualizar_combinado(
+        self,
+        analise:     str  = None,
+        imagem_nome: str  = None,
+        salvar:      bool = True,
+        mostrar:     bool = False,
+    ) -> None:
+        if not self._resultados:
+            raise RuntimeError("Execute processar() antes de visualizar_combinado().")
+        pasta = self.diretorio_saida / analise if analise else self.diretorio_saida
+        visualizar_combinado(
+            resultados=self._resultados,
+            operacoes=self._operacoes_selecionadas,
+            pasta_saida=pasta,
+            imagem_nome=imagem_nome,
+            mostrar=mostrar,
+            salvar=salvar,
+        )
+
     def gerar_relatorio_metricas(self, analise: str = None) -> None:
         if not self._resultados:
             raise RuntimeError("Execute processar() antes de gerar_relatorio_metricas().")
         gerar_relatorio(self._resultados, analise=analise)
+
+    def gerar_ranking(self, analise: str = None) -> None:
+        if not self._resultados:
+            raise RuntimeError("Execute processar() antes de gerar_ranking().")
+        pasta = self.diretorio_saida / analise if analise else self.diretorio_saida
+        gerar_ranking(self._resultados, pasta_saida=pasta, analise=analise)
 
     # ------------------------------------------------------------------
     # Interno

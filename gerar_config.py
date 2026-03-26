@@ -18,9 +18,15 @@ DEFAULT_INTENSIDADE = 0.05
 DEFAULT_SEED        = 42
 
 
+_TODAS_OPERACOES = (
+    "[OperacaoMorfologica.EROSAO, OperacaoMorfologica.DILATACAO, "
+    "OperacaoMorfologica.ABERTURA, OperacaoMorfologica.FECHAMENTO]"
+)
+
+
 def _nome_experimento(categoria: str) -> str:
     """Converte nome da categoria em chave válida para o dict."""
-    return categoria.lower().replace(" ", "_") + "_todas_operacoes"
+    return categoria.lower().replace(" ", "_") + "_morfologico"
 
 
 def gerar() -> None:
@@ -46,7 +52,7 @@ def gerar() -> None:
         "# Campos de cada experimento:",
         "#   categorias  : lista de categorias do dataset  (use OU categorias OU nomes)",
         "#   nomes       : lista de nomes de imagens específicas",
-        "#   operacoes   : lista de OperacaoMorfologica  ou  \"todas\"",
+        "#   operacoes   : lista de OperacaoMorfologica",
         "#   kernels     : tamanhos dos elementos estruturantes (ímpares, ex: [3, 5, 7])",
         "#   ruido       : TipoRuido.SALT_PEPPER  ou  TipoRuido.GAUSSIANO",
         "#   intensidade : fração de pixels corrompidos (0.0 – 1.0)",
@@ -56,6 +62,13 @@ def gerar() -> None:
         "",
         f'DATASET    = "{DATASET}"',
         f'RESULTADOS = "{RESULTADOS}"',
+        "",
+        "# True  = também salva um arquivo compilado com todas as operações juntas",
+        "# False = apenas os arquivos separados por operação (padrão)",
+        "GERAR_VISAO_GERAL = False",
+        "",
+        "# True  = gera CSVs de métricas e ranking automático por experimento",
+        "GERAR_RANKING = True",
         "",
         "EXPERIMENTOS = {",
     ]
@@ -68,7 +81,7 @@ def gerar() -> None:
             f'    # {categoria} ({n_imagens} imagens)',
             f'    "{chave}": dict(',
             f'        categorias  = ["{categoria}"],',
-            f'        operacoes   = "todas",',
+            f'        operacoes   = {_TODAS_OPERACOES},',
             f'        kernels     = {DEFAULT_KERNELS},',
             f'        ruido       = {DEFAULT_RUIDO},',
             f'        intensidade = {DEFAULT_INTENSIDADE},',

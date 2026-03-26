@@ -1,4 +1,4 @@
-from config import DATASET, RESULTADOS, EXPERIMENTOS
+from config import DATASET, RESULTADOS, EXPERIMENTOS, GERAR_VISAO_GERAL, GERAR_RANKING
 from processador import ProcessadorMorfologico
 
 for nome, cfg in EXPERIMENTOS.items():
@@ -10,17 +10,16 @@ for nome, cfg in EXPERIMENTOS.items():
         intensidade_ruido = cfg["intensidade"],
         seed              = cfg["seed"],
     )
-    sel = p.selecionar_imagens(
-        nomes      = cfg.get("nomes"),
-        categorias = cfg.get("categorias"),
+    (
+        p.selecionar_imagens(nomes=cfg.get("nomes"), categorias=cfg.get("categorias"))
+         .selecionar_operacoes(operacoes=cfg["operacoes"])
     )
-    ops = cfg["operacoes"]
-    if ops == "todas":
-        sel.selecionar_operacoes(todas=True)
-    else:
-        sel.selecionar_operacoes(operacoes=ops)
     p.processar()
     p.visualizar(analise=nome, salvar=True)
+    if GERAR_VISAO_GERAL:
+        p.visualizar_combinado(analise=nome, salvar=True)
     p.gerar_relatorio_metricas(analise=nome)
+    if GERAR_RANKING:
+        p.gerar_ranking(analise=nome)
 
 print(f"\nConcluído. Resultados em: {RESULTADOS}/")
